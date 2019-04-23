@@ -26,12 +26,12 @@ class Trashbag(BaseAgent):
 
 
         self.preprocess(packet)
-        car_direction = self.car.matrix.data[0]
-        car_to_ball = self.ball.loc - self.car.loc
-        ball2D = (self.ball.loc).flatten()
-        self.steer_correction_radians = car_direction.correction_to(car_to_ball)
 
-        if self.steer_correction_radians > 0:
+        self.ball2D = (self.ball.loc).flatten()
+        self.local_ball = local(self.car, self.ball.loc)
+        self.angle_steer = math.atan2(self.local_ball[1], self.local_ball[0])
+        self.controller_state.steer = clamp(self.angle_steer, 1, -1)
+        if self.angle_steer > 0:
             self.action_display = "Turn left"
         else:
             self.action_display = "Turn right"
@@ -40,7 +40,7 @@ class Trashbag(BaseAgent):
         self.turn_radius = 156 + 0.1*self.speed + 0.000069*self.speed**2 + 0.000000164*self.speed**3 + -5.62E-11*self.speed**4
         self.pointright = self.car.matrix.data[1] * self.turn_radius + self.car.loc
         self.pointleft = self.car.matrix.data[1] * self.turn_radius * -1 + self.car.loc
-        if (ball2D - self.pointright).magnitude() < self.turn_radius or (ball2D - self.pointleft).magnitude() < self.turn_radius:
+        if (self.ball2D - self.pointright).magnitude() < self.turn_radius or (self.ball2D - self.pointleft).magnitude() < self.turn_radius:
             if (self.car.loc.flatten() - self.ball.loc.flatten()).magnitude() < 300:
                 self.controller_state.handbrake = True
                 self.controller_state.throttle = 0.2
@@ -54,9 +54,6 @@ class Trashbag(BaseAgent):
             self.controller_state.throttle = 1
             self.throttle_display = "Full throttle"
         
-        steering = self.steer_correction_radians * -1 * 5
-        self.controller_state.steer = clamp(steering, 1, -1)
-
         self.ball_prediction = self.get_ball_prediction_struct()
         prediction_slice = self.ball_prediction.slices[120]
         location = prediction_slice.physics.location
@@ -122,9 +119,10 @@ def draw_debug(self, renderer, car, ball):
     renderer.begin_rendering()
     renderer.draw_line_3d(self.car.loc, self.ball.loc, renderer.white())
     renderer.draw_line_3d(self.car.loc, self.car.matrix.data[0] * 500 + self.car.loc, renderer.blue())
-    renderer.draw_string_2d(10, 50 * (self.team * 2), 1, 1, self.action_display, renderer.red())
-    renderer.draw_string_2d(10, 50 * (self.team * 2) + 20, 1, 1, self.throttle_display, renderer.red())
-    renderer.draw_string_2d(10, 50 * (self.team * 2) + 40, 1, 1, "Speed" +'\n'+ str(self.speed), renderer.lime())
+    renderer.draw_string_2d(10, 80 * (self.team * 2), 1, 1, self.action_display, renderer.red())
+    renderer.draw_string_2d(10, 80 * (self.team * 2) + 20, 1, 1, self.throttle_display, renderer.red())
+    renderer.draw_string_2d(10, 80 * (self.team * 2) + 40, 1, 1, "Speed" +'\n'+ str(self.speed), renderer.lime())
+    renderer.draw_string_2d(10, 80 * (self.team * 2) + 80, 1, 1, str(Vector3(round(self.local_ball[0]), round(self.local_ball[1]), round(self.local_ball[2]))), renderer.blue())
 
     '''Turning circles'''
     if self.turn_on_turn_radius_rendering ==True:
@@ -135,7 +133,7 @@ def draw_debug(self, renderer, car, ball):
             a = (i / connections) * 2 * math.pi
             b.append(Vector3(self.turn_radius * math.cos(a), self.turn_radius * math.sin(a) , self.car.loc[2]) + self.pointright)
             b0.append(Vector3(self.turn_radius * math.cos(a), self.turn_radius * math.sin(a) , self.car.loc[2]) + self.pointleft)
-        if self.steer_correction_radians < 0:
+        if self.angle_steer < 0:
             renderer.draw_polyline_3d(b, self.renderer.create_color(255, 255, 0, 255))
         else:
             renderer.draw_polyline_3d(b0, self.renderer.create_color(255, 255, 0, 255))
@@ -203,19 +201,3 @@ class Vector3:
         return Vector3((self[1]*value[2]) - (self[2]*value[1]),(self[2]*value[0]) - (self[0]*value[2]),(self[0]*value[1]) - (self[1]*value[0]))
     def flatten(self):
         return Vector3(self[0],self[1],0)
-    
-    def correction_to(self, ideal):
-        # The in-game axes are left handed, so use -x
-        current_in_radians = math.atan2(self[1], -self[0])
-        ideal_in_radians = math.atan2(ideal[1], -ideal[0])
-
-        correction = ideal_in_radians - current_in_radians
-
-        # Make sure we go the 'short way'
-        if abs(correction) > math.pi:
-            if correction < 0:
-                correction += 2 * math.pi
-            else:
-                correction -= 2 * math.pi
-
-        return correction
