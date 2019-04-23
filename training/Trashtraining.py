@@ -1,8 +1,8 @@
-from rlbottraining.common_exercises.bronze_goalie import BallRollingToGoalie
+from rlbottraining.common_exercises.bronze_goalie import HookShot
 from pathlib import Path
 from rlbot.matchconfig.match_config import PlayerConfig, Team
 def make_default_playlist():
-    exercises = [BallRollingToGoalie('Trash Training')]
+    exercises = [HookShot('Trash Training')]
 
     for exercise in exercises:
         exercise.match_config.player_configs = [
