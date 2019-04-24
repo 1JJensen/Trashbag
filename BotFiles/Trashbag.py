@@ -1,12 +1,18 @@
 import math
 import time
+<<<<<<< HEAD
+=======
+import random as np
+>>>>>>> 25fbb38c7cf617de55e8f622ac0d5e643ac64ed5
 
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
 from rlbot.utils.structures.ball_prediction_struct import BallPrediction, Slice
 from rlbot.utils.structures.quick_chats import QuickChats
-
 from random import triangular as triforce
+'''To-do list
+Learn debugger
+Halfflips'''
 
 class Trashbag(BaseAgent):
 
@@ -15,8 +21,11 @@ class Trashbag(BaseAgent):
         self.car = carobject(self.index)
         self.ball = ballobject()
         self.controller_state = SimpleControllerState()
+        self.target = Vector3(np.uniform(3500, -3500), np.uniform(4000, -4000), 50)
+        self.start = time.time()
 
     def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
+        self.preprocess(packet)
 
         '''Rendering manager'''
         self.turn_on_turn_radius_rendering = False
@@ -26,10 +35,10 @@ class Trashbag(BaseAgent):
         self.amount_of_ballprediction_locations = 360
 
 
-        self.preprocess(packet)
-
         self.ball2D = (self.ball.loc).flatten()
-        self.local_ball = local(self.car, self.ball.loc)
+        if (self.target - self.car.loc).magnitude() < 200:
+            self.target = Vector3(np.uniform(3500, -3500), np.uniform(4000, -4000), 50)
+        self.local_ball = local(self.car, self.target)
         self.angle_steer = math.atan2(self.local_ball[1], self.local_ball[0])
         self.controller_state.steer = clamp(self.angle_steer / 10, 1, -1)
         if self.angle_steer > 0:
@@ -41,7 +50,7 @@ class Trashbag(BaseAgent):
         self.turn_radius = 156 + 0.1*self.speed + 0.000069*self.speed**2 + 0.000000164*self.speed**3 + -5.62E-11*self.speed**4
         self.pointright = self.car.matrix.data[1] * self.turn_radius + self.car.loc
         self.pointleft = self.car.matrix.data[1] * self.turn_radius * -1 + self.car.loc
-        if (self.ball2D - self.pointright).magnitude() < self.turn_radius or (self.ball2D - self.pointleft).magnitude() < self.turn_radius:
+        if (self.target - self.pointright).magnitude() < self.turn_radius or (self.target - self.pointleft).magnitude() < self.turn_radius:
             if (self.car.loc.flatten() - self.ball.loc.flatten()).magnitude() < 300:
                 self.controller_state.handbrake = True
                 self.controller_state.throttle = 0.2
@@ -68,12 +77,33 @@ class Trashbag(BaseAgent):
         '''if location[1] > 5120 * ((self.team - 0.5) * 2):
             self.send_quick_chat0(QuickChats.CHAT_EVERYONE, QuickChats.Reaction Nooo)'''
         draw_debug(self,self.renderer, self.car, self.ball)
-
+        distance_target = (self.car.loc - self.target).magnitude()
+        if self.car.vel.magnitude() > 1200 and self.angle_steer < 0.1 and distance_target > 1500 and self.car.wheelcontact == True:
+            return dodge(self)
+            
         return self.controller_state
-
+        
     def preprocess(self, gamepacket):
         self.car.update(gamepacket.game_cars[self.index])
         self.ball.update(gamepacket.game_ball)
+
+def dodge(self):
+    time_difference = time.time() - self.start
+    print(time_difference)
+    if time_difference > 2.2:
+        self.start = time.time()
+    elif time_difference <= 0.1:
+        self.controller_state.jump = True
+        self.controller_state.pitch = -1
+    elif time_difference >= 0.1 and time_difference <= 0.4:
+        self.controller_state.jump = False
+    elif time_difference > 0.4 and time_difference < 1:
+        self.controller_state.jump = True
+    elif time_difference > 1.00 and time_difference < 2:
+        self.controller_state.jump = False
+        self.controller_state.pitch = 0
+        self.controller_state.yaw = 0
+    return self.controller_state
 
 class carobject:
     def __init__(self, i):
@@ -125,7 +155,7 @@ class ballobject:
 
 def draw_debug(self, renderer, car, ball):
     renderer.begin_rendering()
-    renderer.draw_line_3d(self.car.loc, self.ball.loc, renderer.white())
+    renderer.draw_line_3d(self.car.loc, self.target, renderer.white())
     renderer.draw_line_3d(self.car.loc, self.car.matrix.data[0] * 500 + self.car.loc, renderer.blue())
     renderer.draw_string_2d(10, 80 * (self.team * 2), 1, 1, self.action_display, renderer.red())
     renderer.draw_string_2d(10, 80 * (self.team * 2) + 20, 1, 1, self.throttle_display, renderer.red())
