@@ -1,4 +1,5 @@
 import math
+import time
 
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
@@ -30,7 +31,7 @@ class Trashbag(BaseAgent):
         self.ball2D = (self.ball.loc).flatten()
         self.local_ball = local(self.car, self.ball.loc)
         self.angle_steer = math.atan2(self.local_ball[1], self.local_ball[0])
-        self.controller_state.steer = clamp(self.angle_steer, 1, -1)
+        self.controller_state.steer = clamp(self.angle_steer / 10, 1, -1)
         if self.angle_steer > 0:
             self.action_display = "Turn left"
         else:
@@ -54,6 +55,13 @@ class Trashbag(BaseAgent):
             self.controller_state.throttle = 1
             self.throttle_display = "Full throttle"
         
+        '''if self.car.vel.magnitude() > 1200 and self.distance_to_target > 2000 and self.angle_steer < 1:
+            fliptime = time.time()
+            x = time.time() - fliptime
+        if x > 1 and x < '''
+
+            
+        print(time.time())
         self.ball_prediction = self.get_ball_prediction_struct()
         prediction_slice = self.ball_prediction.slices[120]
         location = prediction_slice.physics.location
@@ -146,9 +154,9 @@ def draw_debug(self, renderer, car, ball):
             prediction_slice = self.ball_prediction.slices[i]
             location = prediction_slice.physics.location
             c.append(location)
-        '''renderer.draw_polyline_3d(c, renderer.create_color(255, 0, 255, 0))'''
-        for vec in c:
-            renderer.draw_string_3d(vec, 1, 1, "-", renderer.red())
+        renderer.draw_polyline_3d(c, renderer.create_color(255, 0, 255, 0))
+        '''for vec in c:
+            renderer.draw_string_3d(vec, 1, 1, "-", renderer.red())'''
 
     renderer.end_rendering()
 
