@@ -9,7 +9,7 @@ from rlbot.utils.structures.quick_chats import QuickChats
 from random import triangular as triforce
 '''To-do list
 Learn debugger
-Halfflips'''
+Half-flips'''
 
 class Trashbag(BaseAgent):
 
@@ -100,6 +100,29 @@ def dodge(self):
         self.controller_state.jump = False
         self.controller_state.pitch = 0
         self.controller_state.yaw = 0
+    return self.controller_state
+
+def Halfflip(self):
+    time_difference = time.time() - self.start
+    print(time_difference)
+    if time_difference > 2.2:
+        self.start = time.time()
+    elif time_difference <= 0.1:
+        self.controller_state.jump = True
+        self.controller_state.pitch = 1
+    elif time_difference >= 0.1 and time_difference <= 0.4:
+        self.controller_state.jump = False
+    elif time_difference > 0.4 and time_difference < 1:
+        self.controller_state.jump = True
+    elif time_difference > 1.00 and time_difference < 2:
+        self.controller_state.jump = False
+        self.controller_state.pitch = -1
+        self.controller_state.roll = 1
+    elif time_difference > 2 and time_difference < 2.2:
+        self.controller_state.pitch = 0
+    elif time_difference > 2.2 and time_difference < 2.5:
+        self.controller_state.roll = 0
+    elif time_difference > 2 and time_difference < 2.5:
     return self.controller_state
 
 class carobject:
