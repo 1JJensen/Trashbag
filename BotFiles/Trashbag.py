@@ -1,9 +1,6 @@
 import math
 import time
-<<<<<<< HEAD
-=======
 import random as np
->>>>>>> 25fbb38c7cf617de55e8f622ac0d5e643ac64ed5
 
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
