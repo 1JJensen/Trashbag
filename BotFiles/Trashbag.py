@@ -1,9 +1,6 @@
 import math
-import time
-<<<<<<< HEAD
-=======
 import random as np
->>>>>>> 25fbb38c7cf617de55e8f622ac0d5e643ac64ed5
+import time
 
 from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
 from rlbot.utils.structures.game_data_struct import GameTickPacket
@@ -22,7 +19,11 @@ class Trashbag(BaseAgent):
         self.ball = ballobject()
         self.controller_state = SimpleControllerState()
         self.target = Vector3(np.uniform(3500, -3500), np.uniform(4000, -4000), 50)
-        self.start = time.time()
+        self.start = 0
+        self.finish_dodge = False
+        self.wheel_contact_old = True
+        self.old_angle = False
+        self.last_angle = 0
 
     def get_output(self, packet: GameTickPacket) -> SimpleControllerState:
         self.preprocess(packet)
@@ -38,9 +39,13 @@ class Trashbag(BaseAgent):
         self.ball2D = (self.ball.loc).flatten()
         if (self.target - self.car.loc).magnitude() < 200:
             self.target = Vector3(np.uniform(3500, -3500), np.uniform(4000, -4000), 50)
+            self.finish_dodge = False
+        
         self.local_ball = local(self.car, self.target)
         self.angle_steer = math.atan2(self.local_ball[1], self.local_ball[0])
-        self.controller_state.steer = clamp(self.angle_steer / 10, 1, -1)
+        self.angle_vertical = math.atan2(self.local_ball[2], self.local_ball[0])
+        self.controller_state.steer = clamp(self.angle_steer * 1.8, 1, -1)
+        
         if self.angle_steer > 0:
             self.action_display = "Turn left"
         else:
@@ -51,58 +56,97 @@ class Trashbag(BaseAgent):
         self.pointright = self.car.matrix.data[1] * self.turn_radius + self.car.loc
         self.pointleft = self.car.matrix.data[1] * self.turn_radius * -1 + self.car.loc
         if (self.target - self.pointright).magnitude() < self.turn_radius or (self.target - self.pointleft).magnitude() < self.turn_radius:
-            if (self.car.loc.flatten() - self.ball.loc.flatten()).magnitude() < 300:
+            if (self.car.loc.flatten() - self.target.flatten()).magnitude() < 300:
+                self.controller_state.boost = False
                 self.controller_state.handbrake = True
                 self.controller_state.throttle = 0.2
                 self.throttle_display = "Deja vu"
             else:
+                self.controller_state.boost = False
                 self.controller_state.handbrake = False
                 self.controller_state.throttle = -0.2
                 self.throttle_display = "Slow down"
         else:
+            if abs(self.angle_steer) < 0.02:
+                self.controller_state.boost = True
+            else:
+                self.controller_state.boost = False
             self.controller_state.handbrake = False
             self.controller_state.throttle = 1
             self.throttle_display = "Full throttle"
-        
-        '''if self.car.vel.magnitude() > 1200 and self.distance_to_target > 2000 and self.angle_steer < 1:
-            fliptime = time.time()
-            x = time.time() - fliptime
-        if x > 1 and x < '''
 
-            
-        print(time.time())
         self.ball_prediction = self.get_ball_prediction_struct()
         prediction_slice = self.ball_prediction.slices[120]
         location = prediction_slice.physics.location
         '''if location[1] > 5120 * ((self.team - 0.5) * 2):
             self.send_quick_chat0(QuickChats.CHAT_EVERYONE, QuickChats.Reaction Nooo)'''
+
+        '''if self.car.wheelcontact == True or self.finish_dodge == True:
+            self.finish_dodge = True
+            return self.dodge()
+        '''
         draw_debug(self,self.renderer, self.car, self.ball)
         distance_target = (self.car.loc - self.target).magnitude()
-        if self.car.vel.magnitude() > 1200 and self.angle_steer < 0.1 and distance_target > 1500 and self.car.wheelcontact == True:
-            return dodge(self)
-            
+        '''print(self.finish_dodge)
+        if self.car.vel.magnitude() > 1200 and self.angle_steer < 0.05 and self.angle_vertical < 0.1 and distance_target > 2000 and self.car.wheelcontact or self.finish_dodge == True:
+            self.finish_dodge = True
+            return self.dodge()
+        else:
+            self.finish_dodge = False'''
+
+        #print("pitch", self.controller_state.pitch, "yaw", self.controller_state.yaw,"roll", self.controller_state.roll, "steer", self.controller_state.steer)
+
         return self.controller_state
-        
+
     def preprocess(self, gamepacket):
         self.car.update(gamepacket.game_cars[self.index])
         self.ball.update(gamepacket.game_ball)
 
-def dodge(self):
+    def dodge(self):
+        angle = abs(self.angle_steer) < 0.1
+        if(angle != self.old_angle):
+            self.old_angle = angle
+            self.last_angle = time.time()
+        self.controller_state.yaw = 0
+        self.controller_state.roll = 0
+        time_difference = time.time() - self.start
+        if angle and time.time() - self.last_angle > 0.8:
+            if time_difference > 2.2:
+                self.start = time.time()
+            elif time_difference <= 0.1:
+                self.controller_state.jump = True
+                self.controller_state.pitch = -1
+            elif time_difference >= 0.1 and time_difference <= 0.15:
+                self.controller_state.jump = False
+                self.controller_state.pitch = -1
+            elif time_difference > 0.15 and time_difference < 1:
+                self.controller_state.jump = True
+                self.controller_state.pitch = -1
+            elif time_difference > 1.00 and time_difference < 2:
+                self.controller_state.jump = False
+                self.controller_state.pitch = 0
+                self.finish_dodge = False
+        return self.controller_state
+
+def Halfflip(self):
     time_difference = time.time() - self.start
-    print(time_difference)
     if time_difference > 2.2:
         self.start = time.time()
     elif time_difference <= 0.1:
         self.controller_state.jump = True
-        self.controller_state.pitch = -1
+        self.controller_state.pitch = 1
     elif time_difference >= 0.1 and time_difference <= 0.4:
         self.controller_state.jump = False
     elif time_difference > 0.4 and time_difference < 1:
         self.controller_state.jump = True
-    elif time_difference > 1.00 and time_difference < 2:
+    elif time_difference > 1 and time_difference < 2:
         self.controller_state.jump = False
+        self.controller_state.pitch = -1
+        self.controller_state.roll = 1
+    elif time_difference > 2 and time_difference < 2.2:
         self.controller_state.pitch = 0
-        self.controller_state.yaw = 0
+    elif time_difference > 2.2 and time_difference < 2.5:
+        self.controller_state.roll = 0
     return self.controller_state
 
 class carobject:
@@ -159,7 +203,7 @@ def draw_debug(self, renderer, car, ball):
     renderer.draw_line_3d(self.car.loc, self.car.matrix.data[0] * 500 + self.car.loc, renderer.blue())
     renderer.draw_string_2d(10, 80 * (self.team * 2), 1, 1, self.action_display, renderer.red())
     renderer.draw_string_2d(10, 80 * (self.team * 2) + 20, 1, 1, self.throttle_display, renderer.red())
-    renderer.draw_string_2d(10, 80 * (self.team * 2) + 40, 1, 1, "Speed" +'\n'+ str(self.speed), renderer.lime())
+    renderer.draw_string_2d(10, 80 * (self.team * 2) + 40, 1, 1, "Speed" +'\n'+ str(round(self.speed)), renderer.lime())
     renderer.draw_string_2d(10, 80 * (self.team * 2) + 80, 1, 1, str(Vector3(round(self.local_ball[0]), round(self.local_ball[1]), round(self.local_ball[2]))), renderer.blue())
 
     '''Turning circles'''
